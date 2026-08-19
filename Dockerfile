@@ -10,7 +10,7 @@ ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-venv python3-pip nodejs npm rustc cargo golang \
+    && apt-get install -y --no-install-recommends python3 python3-venv python3-pip nodejs npm rustc cargo golang g++ default-jdk \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

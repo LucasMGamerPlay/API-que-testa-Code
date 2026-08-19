@@ -26,7 +26,7 @@ app.add_middleware(
 
 
 class BenchmarkRequest(BaseModel):
-    language: str = Field(default="javascript", pattern="^(javascript|python|rust|go|csharp)$")
+    language: str = Field(default="javascript", pattern="^(javascript|python|rust|go|csharp|cpp|java)$")
     code: str = Field(min_length=1, max_length=50_000)
     iterations: int = Field(default=10_000, ge=1, le=100_000)
     warmups: int = Field(default=1_000, ge=0, le=10_000)

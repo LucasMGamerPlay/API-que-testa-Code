@@ -1,6 +1,6 @@
 # CodePulse Benchmark API
 
-API pública para medir e comparar a velocidade de snippets em JavaScript, Python, Rust, Go e C#, inspirada em ferramentas como JSBench.
+API pública para medir e comparar a velocidade de snippets em JavaScript, Python, Rust, Go, C++, C# e Java, inspirada em ferramentas como JSBench.
 
 ## Rodar localmente
 
@@ -13,7 +13,7 @@ uvicorn app.main:app --reload
 
 Abra http://127.0.0.1:8000 para usar a interface ou http://127.0.0.1:8000/docs para a documentação OpenAPI.
 
-JavaScript exige Node.js instalado, Python usa o interpretador que iniciou a API, Rust exige `rustc`, Go exige o Go SDK e C# exige o .NET SDK.
+JavaScript exige Node.js instalado, Python usa o interpretador que iniciou a API, Rust exige `rustc`, Go exige o Go SDK, C# exige o .NET SDK, C++ exige `g++` e Java exige `javac`/`java`.
 
 ## Rodar com Docker
 

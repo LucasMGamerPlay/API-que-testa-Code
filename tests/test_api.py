@@ -45,6 +45,22 @@ def test_csharp_benchmark() -> None:
     assert response.status_code == 200
 
 
+def test_cpp_benchmark() -> None:
+    response = client.post(
+        "/api/v1/benchmarks",
+        json={"language": "cpp", "code": "int value = 1 + 1;", "iterations": 2, "warmups": 0},
+    )
+    assert response.status_code == 200
+
+
+def test_java_benchmark() -> None:
+    response = client.post(
+        "/api/v1/benchmarks",
+        json={"language": "java", "code": "int value = 1 + 1;", "iterations": 2, "warmups": 0},
+    )
+    assert response.status_code == 200
+
+
 def test_compare_requires_two_benchmarks() -> None:
     response = client.post(
         "/api/v1/benchmarks/compare",

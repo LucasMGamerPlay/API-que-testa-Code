@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-SUPPORTED_LANGUAGES = {"javascript", "python", "rust", "go", "csharp"}
+SUPPORTED_LANGUAGES = {"javascript", "python", "rust", "go", "csharp", "cpp", "java"}
 MAX_CODE_LENGTH = 50_000
 MAX_ITERATIONS = 100_000
 MAX_WARMUPS = 10_000
@@ -81,6 +81,40 @@ for (var i = 0; i < {iterations}; i++) Snippet();
 stopwatch.Stop();
 Console.WriteLine(JsonSerializer.Serialize(new {{ elapsedMs = stopwatch.Elapsed.TotalMilliseconds, iterations = {iterations} }}));
 '''
+    if language == "cpp":
+        return f'''#include <chrono>
+#include <iostream>
+
+void snippet() {{
+{chr(10).join('    ' + line if line else '    ' for line in code.splitlines())}
+}}
+
+int main() {{
+    for (int i = 0; i < {warmups}; i++) snippet();
+    auto start = std::chrono::steady_clock::now();
+    for (int i = 0; i < {iterations}; i++) snippet();
+    auto elapsed_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+    std::cout << "{{\\"elapsedMs\\":" << elapsed_ms << ",\\"iterations\\":{iterations}}}" << std::endl;
+}}
+'''
+    if language == "java":
+        return f'''import java.util.HashMap;
+import java.util.Map;
+
+class Benchmark {{
+    static void snippet() {{
+{chr(10).join('        ' + line if line else '        ' for line in code.splitlines())}
+    }}
+
+    public static void main(String[] args) {{
+        for (int i = 0; i < {warmups}; i++) snippet();
+        long start = System.nanoTime();
+        for (int i = 0; i < {iterations}; i++) snippet();
+        double elapsedMs = (System.nanoTime() - start) / 1_000_000.0;
+        System.out.println("{{\\"elapsedMs\\":" + elapsedMs + ",\\"iterations\\":{iterations}}}");
+    }}
+}}
+'''
     return f"""import json
 import time
 
@@ -112,9 +146,9 @@ def run_benchmark(language: str, code: str, iterations: int, warmups: int, timeo
         raise BenchmarkError("Timeout must be between 50 and 10000 milliseconds")
 
     source = _build_source(language, code, iterations, warmups)
-    suffix = {"javascript": ".js", "python": ".py", "rust": ".rs", "go": ".go", "csharp": ".cs"}[language]
+    suffix = {"javascript": ".js", "python": ".py", "rust": ".rs", "go": ".go", "csharp": ".cs", "cpp": ".cpp", "java": ".java"}[language]
     go_runtime = shutil.which("go") or r"C:\Program Files\Go\bin\go.exe"
-    command = {"javascript": ["node", "--no-addons"], "python": [sys.executable, "-I"], "rust": ["rustc", "-O"], "go": [go_runtime, "build", "-trimpath"], "csharp": ["dotnet", "build", "--nologo", "-c", "Release"]}[language]
+    command = {"javascript": ["node", "--no-addons"], "python": [sys.executable, "-I"], "rust": ["rustc", "-O"], "go": [go_runtime, "build", "-trimpath"], "csharp": ["dotnet", "build", "--nologo", "-c", "Release"], "cpp": ["g++", "-O2", "-std=c++17"], "java": ["javac"]}[language]
 
     with tempfile.TemporaryDirectory() as temp_dir:
         script_path = Path(temp_dir) / f"benchmark{suffix}"
@@ -140,6 +174,16 @@ def run_benchmark(language: str, code: str, iterations: int, warmups: int, timeo
                     raise BenchmarkError((compiled.stdout + compiled.stderr).strip()[-2_000:])
                 executable_name = "benchmark.exe" if os.name == "nt" else "benchmark"
                 command = [str(Path(temp_dir) / "bin" / "Release" / "net9.0" / executable_name)]
+            elif language == "cpp":
+                compiled = subprocess.run([*command, str(script_path), "-o", str(executable_path)], capture_output=True, text=True, timeout=max(timeout_ms / 1000, 30), cwd=temp_dir)
+                if compiled.returncode != 0:
+                    raise BenchmarkError((compiled.stderr or "C++ compilation failed").strip()[-2_000:])
+                command = [str(executable_path)]
+            elif language == "java":
+                compiled = subprocess.run([*command, str(script_path)], capture_output=True, text=True, timeout=max(timeout_ms / 1000, 30), cwd=temp_dir)
+                if compiled.returncode != 0:
+                    raise BenchmarkError((compiled.stderr or "Java compilation failed").strip()[-2_000:])
+                command = ["java", "-cp", temp_dir, "Benchmark"]
             completed = subprocess.run(
                 [*command, str(script_path)] if language in {"javascript", "python"} else command,
                 capture_output=True,
@@ -148,7 +192,7 @@ def run_benchmark(language: str, code: str, iterations: int, warmups: int, timeo
                 cwd=temp_dir,
             )
         except FileNotFoundError as error:
-            runtime = {"javascript": "node", "python": "python", "rust": "rustc", "go": "go", "csharp": "dotnet"}[language]
+            runtime = {"javascript": "node", "python": "python", "rust": "rustc", "go": "go", "csharp": "dotnet", "cpp": "g++", "java": "java"}[language]
             raise BenchmarkError(f"Runtime not found: {runtime}") from error
         except subprocess.TimeoutExpired as error:
             raise BenchmarkError("Benchmark exceeded its timeout") from error
